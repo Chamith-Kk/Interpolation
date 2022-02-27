@@ -15,23 +15,21 @@ You may use libraries / IDE to achieve a better GUI
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
-import javafx.scene.Group;
-import javafx.scene.Node;
+import javafx.collections.ObservableList;
 import javafx.scene.Scene;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.image.*;
 import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.image.PixelWriter;
-import javafx.scene.image.WritableImage;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
-import javax.swing.*;
+import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 
 public class test extends Application {
@@ -58,11 +56,11 @@ public class test extends Application {
 		//1. We need to create the image
 
 
-
 		//Image top_image = GetSlice(); //go get the slice image
 
-		Image top_image = GetSlice();;
-		Image nearestneibour = NearestNeigbour((int)top_image.getWidth(),(int)top_image.getHeight());
+		Image top_image = GetSlice();
+		;
+		//Image nearestneibour = NearestNeigbour((int)top_image.getWidth(),(int)top_image.getHeight());
 
 
 		//2. We create a view of that image
@@ -90,8 +88,6 @@ public class test extends Application {
 		//float scalefactor = (float)top_image.getWidth()/(float) changed_image.getWidth();
 
 
-
-
 		//Radio button changes between nearest neighbour and bilinear
 		group.selectedToggleProperty().addListener(new ChangeListener<Toggle>() {
 			public void changed(ObservableValue<? extends Toggle> ob, Toggle o, Toggle n) {
@@ -111,44 +107,38 @@ public class test extends Application {
 
 		//Size of main image changes (slider)
 
-			szslider.valueProperty().addListener(new ChangeListener<Number>() {
-				public void changed(ObservableValue<? extends Number>
-											observable, Number oldValue, Number newValue) {
+		szslider.valueProperty().addListener(new ChangeListener<Number>() {
+			public void changed(ObservableValue<? extends Number>
+										observable, Number oldValue, Number newValue) {
 
-					System.out.println(newValue.intValue());
-					//Here's the basic code you need to update an image
-					//TopView.setImage(null); //clear the old image
-					//Image newImage=GetSlice(); //go get the slice image
-					//TopView.setImage(newImage); //Update the GUI so the new image is displayed
-
-
-					TopView.setImage(null);
-					Image newImage = GetSlice();
-					int max_heightval = newValue.intValue();
-					int max_widthval = newValue.intValue();
-
-					Image resiedimg = NearestNeigbour(max_widthval, max_heightval);
-					Image bilinear = BilinearInterpolation(max_widthval,max_heightval);
+				System.out.println(newValue.intValue());
+				//Here's the basic code you need to update an image
+				//TopView.setImage(null); //clear the old image
+				//Image newImage=GetSlice(); //go get the slice image
+				//TopView.setImage(newImage); //Update the GUI so the new image is displayed
 
 
+				TopView.setImage(null);
+				Image newImage = GetSlice();
+				int max_heightval = newValue.intValue();
+				int max_widthval = newValue.intValue();
+
+				Image resiedimg = NearestNeigbour(max_widthval, max_heightval);
 
 
-					if (rb1.isSelected()) {
-						TopView.setImage(resiedimg);
+				if (rb1.isSelected()) {
+					TopView.setImage(resiedimg);
 
-					} else if(rb2.isSelected()) {
-						TopView.setImage(bilinear);
-
-
-					}
-
-
-
+				} else if (rb2.isSelected()) {
 
 
 				}
-			});
 
+
+			}
+		});
+
+		//GammaCorrection((int)gamma_slider.getWidth(),(int)gamma_slider.getHeight(), gamma_slider.getMax());
 
 
 		//Gamma value changes
@@ -170,14 +160,16 @@ public class test extends Application {
 		root.getChildren().addAll(rb1, rb2, gamma_slider, szslider, TopView);
 
 		//Display to user
-		Scene scene = new Scene(root, 824, 568);
+		Scene scene = new Scene(root, 490, 600);
+
 		stage.setScene(scene);
+		stage.setX(-5);
+		stage.setY(2);
 		stage.show();
 
 
+		ThumbWindow(scene.getX() + 480, scene.getY() - 20);
 
-
-		ThumbWindow(scene.getX() + 100, scene.getY() + 100);
 
 	}
 
@@ -246,7 +238,7 @@ public class test extends Application {
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < width; x++) {
 				//For each pixel, get the colour from the cthead slice 76
-				for(int i=0; i < 74; i++) {
+				for (int i = 0; i < 74; i++) {
 					val = grey[75][y][x];
 					Color color = Color.color(val, val, val);
 
@@ -276,198 +268,228 @@ public class test extends Application {
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < width; x++) {
 				//For each pixel, get the colour from the cthead slice 76
-					val = grey[s][y][x];
-					Color color = Color.color(val, val, val);
+				val = grey[s][y][x];
+				Color color = Color.color(val, val, val);
 
 
-					//Apply the new colour
-					image_writer.setColor(x, y, color);
+				//Apply the new colour
+				image_writer.setColor(x, y, color);
 
 			}
 		}
 		return image;
 	}
 
+	//This method implements Nearest Neighbour Interpolation in order to resize the image.
+	//Nearest Neighbour Interpolation happens as follows:
+	//-Parameters of the slider are passed down as parameters.
+	//-A pixelwriter is used to draw the image.
+	//-
+	//
 	public Image NearestNeigbour(int maxw, int maxh) {
 
 		WritableImage new_image = new WritableImage(maxw, maxh);
-		//Find the width and height of the image to be process
-
-			int height = (int)GetSlice().getHeight();
-			int width = (int)GetSlice().getWidth();
-
-			//Get an interface to write to that image memory
-			PixelWriter newimage_writer = new_image.getPixelWriter();
-
-		//Iterate over all pixels
-		for (int j = 0; j < new_image.getHeight()-1; j++) {
-				for (int i = 0; i  < new_image.getWidth()-1; i++) {
-					for (int c = 0; c <= 2; c++) {
-						//For each pixel, get the colour from the cthead slice 76
-
-						int y = j * width / (int)maxw;
-						int x = i * height / (int)maxh;
-
-						float val2 = grey[76][y][x];
-						Color color = Color.color(val2, val2, val2);
-						//Apply the new colour
-						newimage_writer.setColor(i, j, color);
-					}
-				}
-			}
-			return new_image;
-		}
-
-		public  Image BilinearInterpolation(int maxw,int maxh){
-
-			WritableImage new_image2 = new WritableImage(maxw, maxh);
-
-			int height = (int)GetSlice().getHeight();
-			int width = (int)GetSlice().getWidth();
 
 
-			PixelWriter newimage_writer = new_image2.getPixelWriter();
+		//Width and Height of the original image to be resized.
+		int height = (int) GetSlice().getHeight();
+		int width = (int) GetSlice().getWidth();
 
+		//Get an interface to write to that image memory
+		PixelWriter newimage_writer = new_image.getPixelWriter();
 
-			for(int i=0; i< maxh; i++){
-				for(int j=0; j < maxw; j++){
+		//Iterate over all the pixxels of the Image
+		for (int j = 0; j < new_image.getHeight() - 1; j++) {
+			for (int i = 0; i < new_image.getWidth() - 1; i++) {
+				for (int c = 0; c <= 2; c++) {
+					//For each pixel, get the colour from the cthead slice 76
 
-					int y_ratio = j * width / (int)maxw;
-					int x_ratio = i * height / (int)maxh;
+					//These are the width and height of the new images.
+					int y = j * width / (int) maxw;
+					int x = i * height / (int) maxh;
 
-					//Source points coordinates
-					double x0, y0, x1, y1 ,x2, y2;
-					int x01, y01, x02, y02;
-
-					x0 = (int) j  * x_ratio;
-					y0 = (double) i * y_ratio;
-					y01 = (int) y0;
-					x01 = (int) x0;
-					x0 = (int) x0;
-					y02 = (y01 == maxh ) ? y01 : y01 + 1;
-					x02 = (x01 == maxw ) ? x01 : x01 + 1;
-					x2 = x0 - (double) x01;
-					y2 = y0 - (double) y01;
-					x01 = 1 - x01;
-					y01 = 1 - y01;
-
-					float val2 = grey[76][x_ratio][y_ratio];
+					float val2 = grey[76][y][x];
 					Color color = Color.color(val2, val2, val2);
 					//Apply the new colour
-					newimage_writer.setColor(y_ratio, x_ratio, color);
-
-					//float val1 = grey[76][y01][x01];
-					//float val2 = grey[76][y01][x02];
-					//float val3 = grey[76][y02][x01];
-					//float val4 = grey[76][y02][x02];
-
-					//int col = (int)(y2 * (x2 * (val1) + x2 * (val2)) +
-					//		      y01 * (x2 * (val3) + x01 * (val4)));
-
-					//Color casda = Color.color(col,col,col);
-
-					//newimage_writer.setColor(i,j, casda);
-					//float val5 = grey[76,g,g];
-
-					//newimage_writer.setColor();
-
+					newimage_writer.setColor(i, j, color);
 				}
 			}
-		return new_image2;
 		}
+		return new_image;
+	}
+
+	public Image BilinearInterpolation(int maxw, int maxh) {
+
+		WritableImage new_image2 = new WritableImage(maxw, maxh);
+		//Find the width and height of the image to be process
+
+		int old_height = (int) GetSlice().getHeight();
+		int old_width = (int) GetSlice().getWidth();
 
 
+		int y_ratio = old_width / (int) maxw;
+		int x_ratio = old_height / (int) maxh;
+
+		//Get an interface to write to that image memory
+		PixelWriter newimage_writer = new_image2.getPixelWriter();
+
+		//Iterate over all pixels
+		for (int j = 0; j < new_image2.getHeight() - 1; j++) {
+			for (int i = 0; i < new_image2.getWidth() - 1; i++) {
+				for (int c = 0; c <= 2; c++) {
+					//For each pixel, get the colour from the cthead slice 76
+
+					int x1 = j * x_ratio;
+					int y1 = i * y_ratio;
+
+					float x_diff = (x_ratio * i) - x1;
+					float y_diff = (y_ratio * i) - y1;
+					float index = y1 * old_width + x1;
 
 
+					float val1 = grey[76][y1][x1];
+					float val2 = grey[76][y1][x1 + 1];
+					float val3 = grey[76][y1 + 1][x1];
+					float val4 = grey[76][y1 + 1][x1 + 1];
 
+					float final_grey = (((val1) * (1 - x_diff) * (1 - y_diff)) + ((val2) * (x_diff) * (1 - y_diff)) + ((val3) * (y_diff) * (1 - x_diff)) + ((val4) * (x_diff * y_diff)));
+
+
+					Color final_color = Color.color(final_grey, final_grey, final_grey);
+					//Apply the new colour
+					newimage_writer.setColor(i, j, final_color);
+				}
+
+
+			}
+		}
+		return new_image2;
+	}
+
+
+	//This method is used to Implement gamma correction of the image. Width and height of the resized(Up to date) Image is passed down as parameters.
+
+	public Image GammaCorrection(int maxw, int maxh, double gamma) {
+
+		double gamma_new = 1 / gamma;
+
+		WritableImage gamma_corected = new WritableImage(maxw, maxh);
+
+
+		for (int i = 0; i < GetSlice().getWidth(); i++) {
+			for (int j = 0; j < GetSlice().getHeight(); j++) {
+			}
+		}
+		return gamma_corected;
+	}
 
 
 	public void ThumbWindow(double atX, double atY) {
+
 		StackPane ThumbLayout = new StackPane();
 
+		WritableImage canvas_image = new WritableImage(780, 580);
+		int canvas_height = (int)canvas_image.getHeight();
+		int canvas_width = (int)canvas_image.getWidth();
+		float val2;
 
-		ThumbLayout.setLayoutX(50);
-
-		WritableImage thumb_image = new WritableImage(400, 500);
-
-
-		//GetRandomSlice(16)
-		//This will generate an image from the slice by passing the desired grey value as a parameter.
-		ImageView thumb_view = new ImageView(GetRandomSlice(8));
-		thumb_view.setFitWidth(100);
-		thumb_view.setFitHeight(100);
-
-		ImageView thumb_view2 = new ImageView(GetRandomSlice(16));
-		thumb_view.setFitWidth(200);
-		thumb_view2.setFitHeight(200);
+		//The image we are fetching and it's coordinates
+		Image The_slice_image = GetRandomSlice(5);
 
 
+		//The image we are drawing and it's coordinates
+		WritableImage new_slice_image = new WritableImage(256,256);
+		int new_slice_image_height = (int)new_slice_image.getHeight();
+		int new_slice_image_width = (int)new_slice_image.getWidth();
 
+		//Draw the canvas first
+		PixelWriter write_slice_image = new_slice_image.getPixelWriter();
 
-			//ImageView sample_thumb = new ImageView(GetRandomSlice(16));
-			//sample_thumb.setLayoutX(24);
-			//sample_thumb.setLayoutY(19);
+		for(int x = 0; x < canvas_height; x++){
+			for(int y =  0; y < canvas_width; y++){
 
-			//ImageView sample_thumb2 = new ImageView(GetRandomSlice(20));
-			//sample_thumb2.setLayoutX(44);
-			//sample_thumb2.setLayoutY(53);
+				for(int i = x; i < new_slice_image_height; i++) {
+					for (int j = y; j < new_slice_image_width; j++) {
+							val2 = grey[76][i][j];
+							Color pic_colour = Color.color(val2, val2, val2);
+							write_slice_image.setColor(j,i,pic_colour);
 
-			//ThumbLayout.getChildren().add(sample_thumb2);
-			ThumbLayout.getChildren().add(thumb_view2);
-			ThumbLayout.getChildren().add(thumb_view);
-
-
-
-
-
-		{
-
-			//This bit of code makes a white image
-			PixelWriter image_writer = thumb_image.getPixelWriter();
-
-
-			Color color=Color.color(1,1,1);
-			for(int y = 0; y < thumb_image.getHeight(); y++) {
-				for(int x = 0; x < thumb_image.getWidth(); x++) {
-					//Apply the new colour
-					image_writer.setColor(x, y, color);
-
-
-
+					}
 				}
 			}
 		}
 
+		ImageView random_slice_image = new ImageView(new_slice_image);
+		random_slice_image.setFitHeight(55);
+		random_slice_image.setFitWidth(55);
+		random_slice_image.setTranslateX(-500);
+		random_slice_image.setTranslateY(-100);
 
+		ThumbLayout.getChildren().add(random_slice_image);
 
+		Scene ThumbScene = new Scene(ThumbLayout, canvas_width, canvas_height);
 
-		Scene ThumbScene = new Scene(ThumbLayout, thumb_image.getWidth(), thumb_image.getHeight());
-
-
-		
-		//Add mouse over handler - the large image is change to the image the mouse is over
-		thumb_view.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_MOVED, event -> {
-			System.out.println(event.getX()+"  "+event.getY());
-			event.consume();
-		});
-	
-		//Build and display the new window
 		Stage newWindow = new Stage();
-
 		newWindow.setTitle("CThead Slices");
-
 		newWindow.setScene(ThumbScene);
 
-
-	
-		// Set position of second window, related to primary window.
 		newWindow.setX(atX);
 		newWindow.setY(atY);
-	
 		newWindow.show();
+
+
+
+		//Scene ThumbScene = new Scene(ThumbLayout, canvas_image.getWidth(), canvas_image.getHeight());
+
+		//imageView.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_MOVED, event -> {
+		//	System.out.println(event.getX() + "  " + event.getY());
+	//		event.consume();
+	//	});
+
+
+
+
+		//780,580
+
+
+		//	for (int x = 0; x < 500; x = x + 60) {
+		//		for (int y = 0; y < 500; y = y + 60) {
+		//			Image new_image = GetRandomSlice(1);
+		//
+		//			int counter = 0;
+		//			counter = counter + 1;
+		//			for (int i = x; i < 50; i++) {
+		//				float val = grey[counter][x][y];
+		//				Color color = Color.color(val, val, val);
+		//				thumbimage_writer.setColor(x, y, color);
+		//			}
+		//		}
+		//	}
+
+
+		//Add mouse over handler - the large image is change to the image the mouse is over
+
+
+		//Build and display the new window
+
+
+		// Set position of second window, related to primary window.
+
+
 	}
 
-	
+
+
+
+
+
+
+
+
+
+		//}
+
+
     public static void main(String[] args) {
 
 
